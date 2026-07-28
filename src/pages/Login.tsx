@@ -1,24 +1,34 @@
-import React from 'react'
-// import {Link,useNavigate} from 'react-router-dom'
-import { useState } from 'react'
-import axios, { AxiosError } from 'axios'
+import React, { useEffect, useState } from 'react'
+import { useSelector } from 'react-redux'
+import type { RootState } from '../store'
+import { useAppDispatch } from '../store'
+import { login } from '../store/slice/authSlice'
+import { useNavigate } from 'react-router-dom'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-//   const navigate = useNavigate()
+  const [errorMessage, setErrorMessage] = useState('')
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const {isLoading, user} = useSelector((state: RootState) => state.auth)
+
+  useEffect(() => {
+    if (user) {
+      navigate('/')
+    }
+  }, [user, navigate])
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault()
-    console.log(email, password)
-    // try {
-    //   const response = await axios.post('http://localhost:3000/api/login', { email, password })
-    //   console.log(response)
-    // } catch (error) {
-    //   console.log(error)
-    // }
+    setErrorMessage('')
+    try {
+      // unwrap() throws on reject so catch can handle API errors
+      await dispatch(login({ email, password })).unwrap()
+      navigate('/')
+    } catch (error) {
+      setErrorMessage(typeof error === 'string' ? error : 'Login failed')
+    }
   }
 
   return (
@@ -28,6 +38,7 @@ const Login = () => {
                 <h2 className='text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Login to your account</h2>
             </div>
             <form className='mt-8 space-y-6' onSubmit={handleLogin} action="" method="POST">
+                {errorMessage && <p className='text-red-500 text-sm'>{errorMessage}</p>}
                 <div>
                     <input type="email" name="email" id="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} className='relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm' required />
                 </div>
@@ -35,7 +46,7 @@ const Login = () => {
                     <input type="password" name="password" id="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className='relative block w-full appearance-none rounded-none rounded-t-md border border-gray-300 px-3 py-2 text-gray-900 placeholder-gray-500 focus:z-10 focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm' required />
                 </div>
                 <div>
-                    <button type="submit" className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' disabled={loading}>{loading ? 'Logging in...' : 'Login'}</button>
+                    <button type="submit" className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' disabled={isLoading}>{isLoading ? 'Logging in...' : 'Login'}</button>
                 </div>
             </form>
         </div>

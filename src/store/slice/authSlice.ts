@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit"
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 interface User {
     _id: string
@@ -13,35 +13,53 @@ interface AuthState {
     error: string | null
 }
 
+interface AuthError {
+    message: string
+}
+
 const initialState: AuthState = {
     user: localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user') as string) : null,
     isLoading: false,
     error: null,
 }
 
+const getErrorMessage = (error: unknown, fallback: string) => {
+    const axiosError = error as AxiosError<AuthError>
+    return axiosError.response?.data?.message || fallback
+}
+
 export const login = createAsyncThunk(
-    'auth/login', 
-        async ({ email, password }: { email: string, password: string }) => {
-            const {data} = await axios.post('http://localhost:3000/api/auth/login', { email, password }, { withCredentials: true })
-            localStorage.setItem('user', JSON.stringify(data.user))
+    'auth/login',
+    async ({ email, password }: { email: string, password: string }, { rejectWithValue }) => {
+        try {
+            const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/users/login`, { email, password }, { withCredentials: true })
+            const user = { _id: data._id, name: data.name, email: data.email }
+            localStorage.setItem('user', JSON.stringify(user))
             localStorage.setItem('token', data.token)
-            return data
+            return user
+        } catch (error) {
+            return rejectWithValue(getErrorMessage(error, 'Login failed'))
+        }
     }
 )
 
-
 export const register = createAsyncThunk(
-    'auth/register', 
-    async ({ name, email, password }: { name: string, email: string, password: string }) => {
-        const {data} = await axios.post('http://localhost:3000/api/auth/register', { name, email, password }, { withCredentials: true })
-        localStorage.setItem('user', JSON.stringify(data.user))
-        localStorage.setItem('token', data.token)
-        return data
+    'auth/register',
+    async ({ name, email, password }: { name: string, email: string, password: string }, { rejectWithValue }) => {
+        try {
+            const { data } = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/users/register`, { name, email, password }, { withCredentials: true })
+            const user = { _id: data._id, name: data.name, email: data.email }
+            localStorage.setItem('user', JSON.stringify(user))
+            localStorage.setItem('token', data.token)
+            return user
+        } catch (error) {
+            return rejectWithValue(getErrorMessage(error, 'Registration failed'))
+        }
     }
 )
 
 export const logout = createAsyncThunk(
-    'auth/logout', 
+    'auth/logout',
     async () => {
         localStorage.removeItem('user')
         localStorage.removeItem('token')
@@ -50,12 +68,18 @@ export const logout = createAsyncThunk(
 )
 
 export const updateProfile = createAsyncThunk(
-    'auth/updateProfile', 
-    async ({ name, currentPassword, newPassword }: { name: string, currentPassword: string, newPassword: string }) => {
-        const {data} = await axios.put('http://localhost:3000/api/auth/updateProfile', { name, currentPassword, newPassword }, { withCredentials: true })
-        localStorage.setItem('user', JSON.stringify(data.user))
-        return data
-    })
+    'auth/updateProfile',
+    async ({ name, currentPassword, newPassword }: { name: string, currentPassword: string, newPassword: string }, { rejectWithValue }) => {
+        try {
+            const { data } = await axios.put(`${import.meta.env.VITE_BACKEND_URL}/users/profile`, { name, currentPassword, newPassword }, { withCredentials: true })
+            const user = { _id: data._id, name: data.name, email: data.email }
+            localStorage.setItem('user', JSON.stringify(user))
+            return user
+        } catch (error) {
+            return rejectWithValue(getErrorMessage(error, 'Profile update failed'))
+        }
+    }
+)
 
 export const authSlice = createSlice({
     name: 'auth',
@@ -74,7 +98,7 @@ export const authSlice = createSlice({
         })
         .addCase(login.rejected, (state, action) => {
             state.isLoading = false
-            state.error = action.error.message || 'An error occurred'
+            state.error = (action.payload as string) || action.error.message || 'An error occurred'
         })
         .addCase(register.pending, (state) => {
             state.isLoading = true
@@ -87,13 +111,13 @@ export const authSlice = createSlice({
         })
         .addCase(register.rejected, (state, action) => {
             state.isLoading = false
-            state.error = action.error.message || 'An error occurred'
+            state.error = (action.payload as string) || action.error.message || 'An error occurred'
         })
         .addCase(logout.pending, (state) => {
             state.isLoading = true
             state.error = null
         })
-        .addCase(logout.fulfilled, (state, action) => {
+        .addCase(logout.fulfilled, (state) => {
             state.isLoading = false
             state.user = null
             state.error = null
@@ -113,9 +137,9 @@ export const authSlice = createSlice({
         })
         .addCase(updateProfile.rejected, (state, action) => {
             state.isLoading = false
-            state.error = action.error.message || 'An error occurred'
+            state.error = (action.payload as string) || action.error.message || 'An error occurred'
         })
-    }   
+    }
 })
 
 export default authSlice.reducer

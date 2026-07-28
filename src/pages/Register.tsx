@@ -1,27 +1,33 @@
-import React from 'react'
-// import { Link, useNavigate } from 'react-router-dom'
-import { useState } from 'react'
-import axios, { AxiosError } from 'axios';
-import { Link } from 'lucide-react';
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
+import type { RootState } from '../store'
+import { useAppDispatch } from '../store'
+import { register } from '../store/slice/authSlice'
 
 const Register = () => {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-//   const navigate = useNavigate()
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [passwordError, setPasswordError] = useState('')
+  const {isLoading} = useSelector((state: RootState) => state.auth)
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
-  const handleRegister = async (e: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault()
-    console.log(name, email, password, confirmPassword)
-    // try {
-    //   const response = await axios.post('http://localhost:3000/api/register', { name, email, password, confirmPassword })
-    //   console.log(response)
-    // } catch (error) {
-    //   console.log(error)
-    // }
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    setPasswordError('');
+    if(password !== confirmPassword) {
+        setPasswordError('Passwords do not match');
+      return;
+    }
+    try {
+      await dispatch(register({ name, email, password })).unwrap()
+      navigate('/')
+    } catch (error) {
+      setPasswordError(typeof error === 'string' ? error : 'Registration failed')
+    }
   }
 
   return (
@@ -30,7 +36,8 @@ const Register = () => {
         <div>
             <h2 className='text-center text-3xl font-bold tracking-tight text-gray-900 dark:text-white'>Create an account</h2>
         </div>
-        <form className='mt-8 space-y-6' onSubmit={handleRegister} action="" method="POST">
+        <form className='mt-8 space-y-6' onSubmit={handleSubmit} action="" method="POST">
+            {passwordError && <p className='text-red-500 text-sm'>{passwordError}</p>}
             <div>
                 <input
                 type="text"
@@ -83,9 +90,9 @@ const Register = () => {
                 <button
                 type="submit"
                 className='group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500'
-                disabled={loading}
+                disabled={isLoading}
                 >
-                    {loading ? 'Registering...' : 'Register'}
+                    {isLoading ? 'Registering...' : 'Register'}
                 </button>
             </div>
             <div className='text-center text-sm text-gray-500'>
